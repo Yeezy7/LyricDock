@@ -1,92 +1,57 @@
 # LyricDock
 
-LyricDock 是一个 macOS 菜单栏歌词播放器伴侣。当前版本会在顶部菜单栏显示：
+<p align="center">
+	<img src="https://img.shields.io/badge/GitHub-black?logo=github&style=flat-square" alt="GitHub"/>
+	<img src="https://img.shields.io/badge/_macOS-blue?style=flat-square" alt="Platform"/>
+	<img src="https://img.shields.io/badge/license-GPLv3-orange?style=flat-square" alt="License"/>
 
-- 当前歌曲封面
-- 歌名 / 歌手 / 实时歌词
-- 上一首 / 播放暂停 / 下一首
+</p>
 
-## 当前形态
+<p align="center">
+	<img src="https://img.shields.io/github/v/release/Yeezy7/LyricDock?style=flat-square" alt="Version"/>
+</p>
 
-- 纯菜单栏应用，不依赖主窗口
-- 支持右键菜单调节菜单栏宽度、开机自启、自动检查更新和退出
-- 切歌后会先显示 `歌名 · 歌手`，再切到歌词
-- 超长歌词会自动滚动显示
-- 过滤网页等非目标播放源，避免菜单栏被异常接管
+<p align="center">
+	<a href="README_cn.md"><b>中文</b></a> •
+	<a href="README.md"><b>English</b></a>
+</p>
 
-## 当前支持的播放源
+<p align="center">
+	<strong>LyricDock</strong> is a macOS menu bar lyric companion. It is a pure menu bar app with no main window dependency, supports right-click menu controls for menu bar width, launch at login, and automatic update checks, automatically scrolls very long lyric lines, is compatible with macOS 26, and supports multiple music apps.
+</p>
+
+## 🌟 Features
+
+- Supports right-click menu controls for menu bar width, launch at login, automatic update checks, and quitting
+- After a track switch, it first shows `Song Title · Artist`, then switches to lyrics
+- Very long lyric lines scroll automatically
+- Filters out non-target playback sources (such as web pages) to avoid abnormal menu bar takeover
+
+## ⬇️ Currently Supported Playback Sources
 
 - Apple Music
 - Spotify
-- 汽水音乐
-- 网易云音乐
-- QQ 音乐
+- Soda Music
+- NetEase Cloud Music
+- QQ Music
 
-其中：
+Notes:
 
-- Apple Music / Spotify 走专用控制链路
-- 汽水音乐 / 网易云音乐 / QQ 音乐 优先走系统 now playing 适配
+- Apple Music / Spotify use dedicated control pipelines
+- Soda Music / NetEase Cloud Music / QQ Music prefer system now playing adaptation
 
-## 歌词与封面
+- Lyrics are sourced from `LRCLIB`
+- Supports LRC timeline parsing
+- Supports 14-day lyric caching
+- Uses player-provided artwork first; falls back to song matching when unavailable
 
-- 歌词来自 `LRCLIB`
-- 支持 LRC 时间轴解析
-- 支持 14 天歌词缓存
-- 封面优先使用播放器自身 artwork，拿不到时再回退歌曲匹配
+## 👋 Download & Installation
 
-## 打开与运行
+👉 Download from [GitHub Releases](https://github.com/Yeezy7/LyricDock/releases)
 
-1. 用 Xcode 打开 [LyricDock.xcodeproj](/Users/ikun/Documents/code/Projects/APP/LyricDock/LyricDock.xcodeproj)
-2. 给 `LyricDock` 和 `LyricDockWidget` 配置你自己的 Signing Team
-3. 确认 Widget 所需的 `App Group` 已配置一致
-4. 首次运行时，允许应用访问播放器自动化能力
-5. 直接运行主应用，菜单栏即会出现播放器条
+🌿 If you run into any issues, please submit them via [issues](https://github.com/Yeezy7/LyricDock/issues)
 
-## 本地构建
+## 🔑 License
 
-已通过以下命令验证：
+This repository is currently licensed under the `MIT License`. See [LICENSE](LICENSE).
 
-```bash
-xcodebuild -project LyricDock.xcodeproj -scheme LyricDock -configuration Debug -derivedDataPath /tmp/LyricDockDerivedData CODE_SIGNING_ALLOWED=NO build
-```
-
-## 发布
-
-第一版发布材料已经整理好：
-
-- 发布脚本：`./scripts/release_build.sh`
-- DMG 导出脚本：`./scripts/export_dmg.sh`
-- Developer ID 导出模板：`./scripts/ExportOptions-DeveloperID.plist`
-- 发布说明：`./docs/RELEASE.md`
-
-快速生成一个本地 Release 包：
-
-```bash
-./scripts/release_build.sh
-```
-
-导出一个可分发的 `.dmg`：
-
-```bash
-./scripts/export_dmg.sh
-```
-
-如果你有自己的 `svg` 软件图标，可以直接导入并覆盖当前 AppIcon：
-
-```bash
-./scripts/import_svg_icon.sh /path/to/icon.svg
-```
-
-## 开源准备
-
-- 工程已经去掉个人 `Team ID` 绑定，克隆后可直接换成自己的签名团队
-- `.gitignore` 已忽略 `build/`、归档包和本地 Xcode 产物
-- GitHub Release 文案模板见 [docs/GITHUB_RELEASE_TEMPLATE.md](/Users/ikun/Documents/code/Projects/APP/LyricDock/docs/GITHUB_RELEASE_TEMPLATE.md)
-
-## 许可证
-
-当前仓库使用 `MIT License`，见 [LICENSE](/Users/ikun/Documents/code/Projects/APP/LyricDock/LICENSE)。
-
-## 备注
-
-当前版本更适合独立分发，不建议直接按 Mac App Store 路线收口。更具体的发布步骤见 [docs/RELEASE.md](/Users/ikun/Documents/code/Projects/APP/LyricDock/docs/RELEASE.md)。
