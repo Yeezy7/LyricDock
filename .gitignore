@@ -1,0 +1,23 @@
+.DS_Store
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Build artifacts
+build/
+DerivedData/
+
+# Release exports
+*.xcarchive
+*.ipa
+*.pkg
+*.dmg
+*.zip
+
+# SwiftPM
+.build/
+
+# Temporary files
+*.swp
+*.tmp
