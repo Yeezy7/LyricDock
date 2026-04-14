@@ -9,6 +9,8 @@ final class MenuBarArtworkModel: ObservableObject {
     private var loadTask: Task<Void, Never>?
     private var cache: [String: NSImage] = [:]
     private var currentIdentity: String?
+    private var lastUpdateTime: Date = .distantPast
+    private let minimumUpdateInterval: TimeInterval = 2.0 // 最小更新间隔，避免频繁请求
 
     deinit {
         loadTask?.cancel()
@@ -16,11 +18,20 @@ final class MenuBarArtworkModel: ObservableObject {
 
     func update(track: TrackMetadata?) {
         let identity = track?.normalizedIdentity
+        
+        // 检查是否需要更新
         guard identity != currentIdentity || image == nil else {
+            return
+        }
+        
+        // 检查更新频率，避免频繁请求
+        let currentTime = Date()
+        if currentTime.timeIntervalSince(lastUpdateTime) < minimumUpdateInterval {
             return
         }
 
         currentIdentity = identity
+        lastUpdateTime = currentTime
         loadTask?.cancel()
 
         guard let identity else {
@@ -33,7 +44,7 @@ final class MenuBarArtworkModel: ObservableObject {
             return
         }
 
-        image = nil
+        // 保留当前图像，避免闪烁
         loadTask = Task { [weak self] in
             guard let self else {
                 return
@@ -87,8 +98,13 @@ private struct ScrollingStatusText: View {
     private let gap: CGFloat = 28
     private let speed: CGFloat = 32
 
+    // 缓存计算结果，避免重复计算
+    @State private var cachedWidth: CGFloat?
+    @State private var cachedOffset: (time: TimeInterval, value: CGFloat)?
+
     var body: some View {
         let measuredWidth = text.width(using: font)
+        // 注意：在 SwiftUI 中，body 方法不能包含副作用，所以我们不在这里更新 cachedWidth
 
         Group {
             if measuredWidth <= width {
@@ -123,15 +139,28 @@ private struct ScrollingStatusText: View {
     private func scrollingOffset(travel: CGFloat) -> CGFloat {
         let cycleDuration = travel / speed
         let initialPause: TimeInterval = 1.1
-        let timeInCycle = date.timeIntervalSinceReferenceDate
+        let currentTime = date.timeIntervalSinceReferenceDate
+        
+        // 检查缓存的偏移值是否仍然有效
+        if let cached = cachedOffset, 
+           abs(currentTime - cached.time) < 0.1 { // 0.1秒内使用缓存值
+            return cached.value
+        }
+        
+        let timeInCycle = currentTime
             .truncatingRemainder(dividingBy: cycleDuration + initialPause)
 
+        let offset: CGFloat
         if timeInCycle < initialPause {
-            return 0
+            offset = 0
+        } else {
+            let progress = CGFloat((timeInCycle - initialPause) / cycleDuration)
+            offset = -travel * progress
         }
-
-        let progress = CGFloat((timeInCycle - initialPause) / cycleDuration)
-        return -travel * progress
+        
+        // 更新缓存
+        cachedOffset = (time: currentTime, value: offset)
+        return offset
     }
 }
 
@@ -145,7 +174,7 @@ struct MenuBarTransportBarView: View {
     @State private var lastTrackChangeDate = Date.distantPast
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { context in
+        TimelineView(playbackTimelineSchedule(snapshot: playerMonitor.snapshot)) { context in
             let snapshot = playerMonitor.snapshot
             let lyricWindow = snapshot.lyricWindow(at: context.date)
             let track = snapshot.track
@@ -161,11 +190,21 @@ struct MenuBarTransportBarView: View {
                 .help("打开当前播放器")
 
                 Button(action: playerMonitor.openCurrentPlayerApp) {
-                    ScrollingStatusText(
-                        text: displayText,
-                        width: textWidth,
-                        date: context.date
-                    )
+                    if snapshot.state.isPlaying {
+                        ScrollingStatusText(
+                            text: displayText,
+                            width: textWidth,
+                            date: context.date
+                        )
+                    } else {
+                        Text(displayText)
+                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .frame(width: textWidth, alignment: .leading)
+                            .foregroundStyle(Color.primary.opacity(0.96))
+                            .padding(.vertical, 1)
+                            .padding(.horizontal, 2)
+                    }
                 }
                 .buttonStyle(.plain)
                 .help("打开当前播放器")
@@ -251,8 +290,12 @@ struct MenuBarTransportBarView: View {
             return track.displayText
         }
 
+        // 音乐暂停时显示歌名+歌手
+        if !snapshot.state.isPlaying {
+            return track.displayText
+        }
+
         if appearanceSettings.preferences.menuBarPreferLyrics,
-           snapshot.state.isPlaying,
            lyricWindow.current != "等待播放器开始播放",
            lyricWindow.current != track.title {
             return lyricWindow.current
@@ -277,6 +320,16 @@ struct MenuBarTransportBarView: View {
             return nil
         }
         return NSWorkspace.shared.icon(forFile: url.path)
+    }
+    
+    private func playbackTimelineSchedule(snapshot: PlaybackSnapshot) -> some TimelineSchedule {
+        // 播放时使用较高的刷新频率，暂停时使用较低的刷新频率
+        if snapshot.state.isPlaying {
+            // 进一步降低播放时的刷新频率，参考 Boring Notch 的实现
+            return PeriodicTimelineSchedule(from: .now, by: 0.5)
+        } else {
+            return PeriodicTimelineSchedule(from: .now, by: 2.0)
+        }
     }
 }
 
@@ -352,9 +405,11 @@ private struct StatusTransportButtonStyle: ButtonStyle {
 }
 
 #if DEBUG
-#Preview {
-    MenuBarTransportBarView()
-        .environmentObject(PlayerMonitor())
-        .environmentObject(AppearanceSettings())
+struct MenuBarContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        MenuBarTransportBarView()
+            .environmentObject(PlayerMonitor())
+            .environmentObject(AppearanceSettings())
+    }
 }
 #endif

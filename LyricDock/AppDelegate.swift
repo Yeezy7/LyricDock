@@ -8,7 +8,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let appearanceSettings = AppearanceSettings()
 
     private let launchAtLoginController = LaunchAtLoginController()
-    private let updateController = UpdateController()
     private var statusItem: NSStatusItem?
     private var statusHostingView: StatusBarHostingView?
 
@@ -16,7 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         createStatusItemIfNeeded()
         playerMonitor.start()
-        updateController.configure(autoCheckEnabled: appearanceSettings.preferences.automaticallyChecksForUpdates)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -52,14 +50,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             NSSound.beep()
         }
-    }
-
-    @objc
-    private func toggleAutomaticChecksForUpdates(_ sender: NSMenuItem) {
-        let newValue = !appearanceSettings.preferences.automaticallyChecksForUpdates
-        appearanceSettings.updateAutomaticallyChecksForUpdates(newValue)
-        updateController.configure(autoCheckEnabled: newValue)
-        sender.state = newValue ? .on : .off
     }
 
     private func createStatusItemIfNeeded() {
@@ -134,15 +124,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launchItem.target = self
         launchItem.state = launchAtLoginController.isEnabled ? .on : .off
         menu.addItem(launchItem)
-
-        let updateItem = NSMenuItem(
-            title: "自动检查更新",
-            action: #selector(toggleAutomaticChecksForUpdates(_:)),
-            keyEquivalent: ""
-        )
-        updateItem.target = self
-        updateItem.state = appearanceSettings.preferences.automaticallyChecksForUpdates ? .on : .off
-        menu.addItem(updateItem)
 
         let refreshItem = NSMenuItem(
             title: "立即刷新歌词",
@@ -242,16 +223,5 @@ private struct LaunchAtLoginController {
         } else {
             try SMAppService.mainApp.unregister()
         }
-    }
-}
-
-private struct UpdateController {
-    func configure(autoCheckEnabled: Bool) {
-        guard autoCheckEnabled else {
-            return
-        }
-
-        // The feed URL can be wired later without changing the menu structure.
-        _ = Bundle.main.object(forInfoDictionaryKey: "LyricDockUpdateFeedURL") as? String
     }
 }

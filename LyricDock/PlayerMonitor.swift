@@ -17,6 +17,14 @@ final class PlayerMonitor: ObservableObject {
     private var lyricLoadTask: Task<Void, Never>?
     private var lyricLoadIdentity: String?
     private var latestRefreshID: UInt64 = 0
+    private var hasActivePlayer: Bool = false
+    private var isPlaying: Bool = false
+    private let activePlayerPlayingRefreshInterval: TimeInterval = 0.5 // 保持播放时的响应速度
+    private let activePlayerPausedRefreshInterval: TimeInterval = 2.0
+    private let idleRefreshInterval: TimeInterval = 5.0
+    private var lastPlaybackState: PlaybackState? // 用于跟踪播放状态变化
+    private var lastTrackIdentity: String? // 用于跟踪曲目变化
+    private let maxMemoryCacheSize: Int = 50 // 最大内存缓存歌曲数量
 
     init() {
         snapshot = sharedStore.load() ?? .empty
@@ -75,13 +83,23 @@ final class PlayerMonitor: ObservableObject {
             },
         ]
 
-        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+        setupRefreshTimer()
+        scheduleRefreshBurst(reason: "启动")
+    }
+    
+    private func setupRefreshTimer() {
+        refreshTimer?.invalidate()
+        let interval: TimeInterval
+        if hasActivePlayer {
+            interval = isPlaying ? activePlayerPlayingRefreshInterval : activePlayerPausedRefreshInterval
+        } else {
+            interval = idleRefreshInterval
+        }
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             Task { await self?.refresh(reason: "兜底同步") }
         }
         refreshTimer = timer
         RunLoop.main.add(timer, forMode: .common)
-
-        scheduleRefreshBurst(reason: "启动")
     }
 
     func stop() {
@@ -175,9 +193,48 @@ final class PlayerMonitor: ObservableObject {
             lyricSource: immediatePayload.source,
         )
 
-        snapshot = newSnapshot
-        statusMessage = statusText(for: newSnapshot, reason: reason)
-        sharedStore.save(newSnapshot)
+        // 检查是否需要更新 UI，只有在状态或曲目变化时才更新
+        let trackIdentity = playback.track?.normalizedIdentity
+        let stateChanged = playback.state != lastPlaybackState
+        let trackChanged = trackIdentity != lastTrackIdentity
+        
+        if stateChanged || trackChanged {
+            snapshot = newSnapshot
+            statusMessage = statusText(for: newSnapshot, reason: reason)
+            sharedStore.save(newSnapshot)
+            
+            // 更新状态跟踪
+            lastPlaybackState = playback.state
+            lastTrackIdentity = trackIdentity
+        } else {
+            // 只更新位置和时间，不触发 UI 刷新
+            snapshot = PlaybackSnapshot(
+                track: snapshot.track,
+                state: snapshot.state,
+                position: playback.position,
+                updatedAt: playback.updatedAt,
+                sourceBundleIdentifier: snapshot.sourceBundleIdentifier,
+                lyrics: snapshot.lyrics,
+                plainLyrics: snapshot.plainLyrics,
+                lyricSource: snapshot.lyricSource,
+            )
+        }
+        
+        // 检测是否有活动播放器并更新定时器频率
+        let currentHasActivePlayer = playback.track != nil && !isUnavailableTrackPlaceholder(playback.track!)
+        let currentIsPlaying = playback.state.isPlaying
+        
+        // 如果播放状态或活动播放器状态发生变化，更新定时器
+        if currentHasActivePlayer != hasActivePlayer || currentIsPlaying != isPlaying {
+            hasActivePlayer = currentHasActivePlayer
+            isPlaying = currentIsPlaying
+            setupRefreshTimer()
+            
+            // 当没有活动播放器时，清理内存缓存，减少内存占用
+            if !hasActivePlayer {
+                clearMemoryCache()
+            }
+        }
 
         guard let track = playback.track else {
             return
@@ -187,8 +244,8 @@ final class PlayerMonitor: ObservableObject {
             return
         }
 
-        let trackIdentity = track.normalizedIdentity
-        if forceLyricReload || lyricLoadIdentity != trackIdentity {
+        let currentTrackIdentity = track.normalizedIdentity
+        if forceLyricReload || lyricLoadIdentity != currentTrackIdentity {
             lyricLoadTask?.cancel()
             lyricLoadTask = nil
             lyricLoadIdentity = nil
@@ -199,11 +256,11 @@ final class PlayerMonitor: ObservableObject {
             return
         }
 
-        if lyricLoadIdentity == trackIdentity, lyricLoadTask != nil {
+        if lyricLoadIdentity == currentTrackIdentity, lyricLoadTask != nil {
             return
         }
 
-        lyricLoadIdentity = trackIdentity
+        lyricLoadIdentity = currentTrackIdentity
 
         lyricLoadTask = Task { [weak self] in
             guard let self else {
@@ -213,7 +270,7 @@ final class PlayerMonitor: ObservableObject {
             let payload = await self.resolveLyrics(for: track, forceReload: forceLyricReload)
             await MainActor.run {
                 defer {
-                    if self.lyricLoadIdentity == trackIdentity {
+                    if self.lyricLoadIdentity == currentTrackIdentity {
                         self.lyricLoadTask = nil
                         self.lyricLoadIdentity = nil
                     }
@@ -254,13 +311,13 @@ final class PlayerMonitor: ObservableObject {
         }
 
         if !forceReload, let cachedFromDisk = await lyricCacheStore.cachedPayload(for: cacheKey) {
-            lyricCache[cacheKey] = cachedFromDisk
+            addToMemoryCache(key: cacheKey, payload: cachedFromDisk)
             return cachedFromDisk
         }
 
         do {
             let payload = try await lyricsService.fetchLyrics(for: track)
-            lyricCache[cacheKey] = payload
+            addToMemoryCache(key: cacheKey, payload: payload)
             await lyricCacheStore.save(payload, for: cacheKey)
             return payload
         } catch {
@@ -269,8 +326,33 @@ final class PlayerMonitor: ObservableObject {
                 plainText: nil,
                 source: "歌词加载失败：\(error.localizedDescription)",
             )
-            lyricCache[cacheKey] = failurePayload
+            addToMemoryCache(key: cacheKey, payload: failurePayload)
             return failurePayload
+        }
+    }
+    
+    private func addToMemoryCache(key: String, payload: LyricsPayload) {
+        // 如果缓存已满，删除最旧的缓存项
+        if lyricCache.count >= maxMemoryCacheSize {
+            // 简单实现：删除第一个缓存项
+            if let firstKey = lyricCache.keys.first {
+                lyricCache.removeValue(forKey: firstKey)
+            }
+        }
+        lyricCache[key] = payload
+    }
+    
+    private func clearMemoryCache() {
+        // 清理内存缓存，保留当前播放歌曲的缓存（如果有）
+        if let currentTrack = snapshot.track {
+            let currentCacheKey = currentTrack.normalizedIdentity
+            let currentCache = lyricCache[currentCacheKey]
+            lyricCache.removeAll()
+            if let currentCache = currentCache {
+                lyricCache[currentCacheKey] = currentCache
+            }
+        } else {
+            lyricCache.removeAll()
         }
     }
 

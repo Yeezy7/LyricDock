@@ -47,11 +47,6 @@ final class AppearanceSettings: ObservableObject {
         persist()
     }
 
-    func updateAutomaticallyChecksForUpdates(_ value: Bool) {
-        preferences.automaticallyChecksForUpdates = value
-        persist()
-    }
-
     func updatePanelLocked(_ value: Bool) {
         preferences.panelLocked = value
         persist()

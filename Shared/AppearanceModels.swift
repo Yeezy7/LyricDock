@@ -108,7 +108,6 @@ struct AppearancePreferences: Codable, Equatable, Sendable {
     var menuBarPreferLyrics: Bool
     var menuBarWidth: Double
     var menuBarTextLimit: Double
-    var automaticallyChecksForUpdates: Bool
     var panelLocked: Bool
     var customPanelOrigin: PanelOrigin?
 
@@ -120,7 +119,6 @@ struct AppearancePreferences: Codable, Equatable, Sendable {
         menuBarPreferLyrics: true,
         menuBarWidth: 360,
         menuBarTextLimit: 18,
-        automaticallyChecksForUpdates: false,
         panelLocked: false,
         customPanelOrigin: nil,
     )
@@ -133,7 +131,6 @@ struct AppearancePreferences: Codable, Equatable, Sendable {
         case menuBarPreferLyrics
         case menuBarWidth
         case menuBarTextLimit
-        case automaticallyChecksForUpdates
         case panelLocked
         case customPanelOrigin
     }
@@ -146,7 +143,6 @@ struct AppearancePreferences: Codable, Equatable, Sendable {
         menuBarPreferLyrics: Bool,
         menuBarWidth: Double,
         menuBarTextLimit: Double,
-        automaticallyChecksForUpdates: Bool,
         panelLocked: Bool,
         customPanelOrigin: PanelOrigin?
     ) {
@@ -157,7 +153,6 @@ struct AppearancePreferences: Codable, Equatable, Sendable {
         self.menuBarPreferLyrics = menuBarPreferLyrics
         self.menuBarWidth = menuBarWidth
         self.menuBarTextLimit = menuBarTextLimit
-        self.automaticallyChecksForUpdates = automaticallyChecksForUpdates
         self.panelLocked = panelLocked
         self.customPanelOrigin = customPanelOrigin
     }
@@ -171,7 +166,6 @@ struct AppearancePreferences: Codable, Equatable, Sendable {
         menuBarPreferLyrics = try container.decodeIfPresent(Bool.self, forKey: .menuBarPreferLyrics) ?? true
         menuBarWidth = try container.decodeIfPresent(Double.self, forKey: .menuBarWidth) ?? 360
         menuBarTextLimit = try container.decodeIfPresent(Double.self, forKey: .menuBarTextLimit) ?? 18
-        automaticallyChecksForUpdates = try container.decodeIfPresent(Bool.self, forKey: .automaticallyChecksForUpdates) ?? false
         panelLocked = try container.decodeIfPresent(Bool.self, forKey: .panelLocked) ?? false
         customPanelOrigin = try container.decodeIfPresent(PanelOrigin.self, forKey: .customPanelOrigin)
     }
