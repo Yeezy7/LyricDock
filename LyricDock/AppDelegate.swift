@@ -1,5 +1,6 @@
 import AppKit
 import ServiceManagement
+import Sparkle
 import SwiftUI
 
 @MainActor
@@ -8,13 +9,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let appearanceSettings = AppearanceSettings()
 
     private let launchAtLoginController = LaunchAtLoginController()
+    private let updaterController: SPUStandardUpdaterController
     private var statusItem: NSStatusItem?
     private var statusHostingView: StatusBarHostingView?
+
+    override init() {
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: false,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         createStatusItemIfNeeded()
         playerMonitor.start()
+        updaterController.updater.automaticallyChecksForUpdates = appearanceSettings.preferences.automaticallyChecksForUpdates
+        if appearanceSettings.preferences.automaticallyChecksForUpdates {
+            try? updaterController.startUpdater()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -50,6 +65,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             NSSound.beep()
         }
+    }
+
+    @objc
+    private func toggleAutomaticChecksForUpdates(_ sender: NSMenuItem) {
+        let newValue = !appearanceSettings.preferences.automaticallyChecksForUpdates
+        appearanceSettings.updateAutomaticallyChecksForUpdates(newValue)
+        updaterController.updater.automaticallyChecksForUpdates = newValue
+        if newValue {
+            try? updaterController.startUpdater()
+        }
+        sender.state = newValue ? .on : .off
+    }
+
+    @objc
+    private func checkForUpdates(_ sender: Any?) {
+        updaterController.checkForUpdates(sender)
     }
 
     private func createStatusItemIfNeeded() {
@@ -124,6 +155,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launchItem.target = self
         launchItem.state = launchAtLoginController.isEnabled ? .on : .off
         menu.addItem(launchItem)
+
+        let updateItem = NSMenuItem(
+            title: "自动检查更新",
+            action: #selector(toggleAutomaticChecksForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        updateItem.target = self
+        updateItem.state = appearanceSettings.preferences.automaticallyChecksForUpdates ? .on : .off
+        menu.addItem(updateItem)
+
+        let checkUpdateItem = NSMenuItem(
+            title: "检查更新…",
+            action: #selector(checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        checkUpdateItem.target = self
+        menu.addItem(checkUpdateItem)
 
         let refreshItem = NSMenuItem(
             title: "立即刷新歌词",

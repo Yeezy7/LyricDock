@@ -24,6 +24,14 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>LyricDock 需要访问 Music.app 来读取当前播放歌曲、进度与播放状态。</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/Yeezy7/LyricDock/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>18GSd0sD0CZlptHQnlOgzcS+tpcktT/VQ4qxapFcTLU=</string>
+	<key>SUAutomaticallyChecksForUpdates</key>
+	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

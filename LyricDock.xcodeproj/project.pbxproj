@@ -141,6 +141,7 @@
 			);
 			name = LyricDock;
 			packageProductDependencies = (
+				A1B2C3D4E5F60000000000A1 /* Sparkle */,
 			);
 			productName = LyricDock;
 			productReference = A1B2C3D4E5F6000000000010 /* LyricDock.app */;
@@ -200,6 +201,9 @@
 			productRefGroup = A1B2C3D4E5F6000000000051 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				A1B2C3D4E5F60000000000A0 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			targets = (
 				A1B2C3D4E5F6000000000101 /* LyricDock */,
 				A1B2C3D4E5F6000000000102 /* LyricDockWidget */,
@@ -419,6 +423,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D4E5F60000000000A0 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F60000000000A1 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F60000000000A0 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1B2C3D4E5F60000000000F0 /* Project object */;
 }

@@ -1,6 +1,34 @@
 import AppKit
 import Foundation
 
+private final class LyricsPayloadCacheWrapper: NSObject {
+    let payload: LyricsPayload
+    init(payload: LyricsPayload) {
+        self.payload = payload
+    }
+}
+
+private final class LyricsPayloadCache {
+    private let cache = NSCache<NSString, LyricsPayloadCacheWrapper>()
+
+    init() {
+        cache.countLimit = 50
+        cache.totalCostLimit = 50 * 1024 * 1024
+    }
+
+    func payload(forKey key: String) -> LyricsPayload? {
+        cache.object(forKey: key as NSString)?.payload
+    }
+
+    func setPayload(_ payload: LyricsPayload, forKey key: String) {
+        cache.setObject(LyricsPayloadCacheWrapper(payload: payload), forKey: key as NSString)
+    }
+
+    func removeAllObjects() {
+        cache.removeAllObjects()
+    }
+}
+
 @MainActor
 final class PlayerMonitor: ObservableObject {
     @Published private(set) var snapshot: PlaybackSnapshot
@@ -13,18 +41,17 @@ final class PlayerMonitor: ObservableObject {
     private var mediaRemoteObservation: AppleMusicPlaybackObservation?
     private var workspaceObservers: [Any] = []
     private var refreshTimer: Timer?
-    private var lyricCache: [String: LyricsPayload] = [:]
+    private let lyricCache = LyricsPayloadCache()
     private var lyricLoadTask: Task<Void, Never>?
     private var lyricLoadIdentity: String?
     private var latestRefreshID: UInt64 = 0
     private var hasActivePlayer: Bool = false
     private var isPlaying: Bool = false
-    private let activePlayerPlayingRefreshInterval: TimeInterval = 0.5 // 保持播放时的响应速度
+    private let activePlayerPlayingRefreshInterval: TimeInterval = 0.5
     private let activePlayerPausedRefreshInterval: TimeInterval = 2.0
     private let idleRefreshInterval: TimeInterval = 5.0
-    private var lastPlaybackState: PlaybackState? // 用于跟踪播放状态变化
-    private var lastTrackIdentity: String? // 用于跟踪曲目变化
-    private let maxMemoryCacheSize: Int = 50 // 最大内存缓存歌曲数量
+    private var lastPlaybackState: PlaybackState?
+    private var lastTrackIdentity: String?
 
     init() {
         snapshot = sharedStore.load() ?? .empty
@@ -306,7 +333,7 @@ final class PlayerMonitor: ObservableObject {
         }
 
         let cacheKey = track.normalizedIdentity
-        if !forceReload, let cached = lyricCache[cacheKey] {
+        if !forceReload, let cached = lyricCache.payload(forKey: cacheKey) {
             return cached
         }
 
@@ -332,28 +359,11 @@ final class PlayerMonitor: ObservableObject {
     }
     
     private func addToMemoryCache(key: String, payload: LyricsPayload) {
-        // 如果缓存已满，删除最旧的缓存项
-        if lyricCache.count >= maxMemoryCacheSize {
-            // 简单实现：删除第一个缓存项
-            if let firstKey = lyricCache.keys.first {
-                lyricCache.removeValue(forKey: firstKey)
-            }
-        }
-        lyricCache[key] = payload
+        lyricCache.setPayload(payload, forKey: key)
     }
     
     private func clearMemoryCache() {
-        // 清理内存缓存，保留当前播放歌曲的缓存（如果有）
-        if let currentTrack = snapshot.track {
-            let currentCacheKey = currentTrack.normalizedIdentity
-            let currentCache = lyricCache[currentCacheKey]
-            lyricCache.removeAll()
-            if let currentCache = currentCache {
-                lyricCache[currentCacheKey] = currentCache
-            }
-        } else {
-            lyricCache.removeAll()
-        }
+        lyricCache.removeAllObjects()
     }
 
     private func statusText(for snapshot: PlaybackSnapshot, reason: String) -> String {
@@ -442,7 +452,7 @@ final class PlayerMonitor: ObservableObject {
             )
         }
 
-        if !forceReload, let cached = lyricCache[track.normalizedIdentity] {
+        if !forceReload, let cached = lyricCache.payload(forKey: track.normalizedIdentity) {
             return cached
         }
 
@@ -460,7 +470,7 @@ final class PlayerMonitor: ObservableObject {
                 || snapshot.lyricSource != "正在查找歌词…"
         }
 
-        guard let cached = lyricCache[track.normalizedIdentity] else {
+        guard let cached = lyricCache.payload(forKey: track.normalizedIdentity) else {
             return false
         }
         return cached.hasRenderableLyrics || cached.source != "正在查找歌词…"

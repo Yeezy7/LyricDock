@@ -55,20 +55,26 @@ Notes:
 
 🐛 If you run into any issues, please submit them via [issues](https://github.com/Yeezy7/LyricDock/issues)
 
+System Settings can sometimes fail and won't work for non-admin users, just run:  
+	
+    xattr -dr com.apple.quarantine /Applications/LyricDock.app
+Then open the app normally.
+
 ## 📌 Version Changes
 
 ### v1.0.2
 - Optimized CPU usage, only 1-3% CPU usage during playback
 - Optimized memory usage, automatically cleans cache when idle
-- Removed automatic update check feature
+- Reimplemented automatic update check feature
 - Fixed menu preview issue
+- Optimize lyrics cache management implementation
 
 ## 🚀 Future Plans
 
-- Reimplement automatic update feature
-- Support more music players
-- Add dropdown lyrics list feature
-- Optimize lyrics matching algorithm
+- [x] Reimplement automatic update feature
+- [ ] Support more music players
+- [ ] Add dropdown lyrics list feature
+- [ ] Optimize lyrics matching algorithm
 
 ## 🔑 License
 

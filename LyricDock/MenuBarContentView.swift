@@ -176,8 +176,9 @@ struct MenuBarTransportBarView: View {
     var body: some View {
         TimelineView(playbackTimelineSchedule(snapshot: playerMonitor.snapshot)) { context in
             let snapshot = playerMonitor.snapshot
-            let lyricWindow = snapshot.lyricWindow(at: context.date)
             let track = snapshot.track
+            let isPlaying = snapshot.state.isPlaying
+            let lyricWindow = isPlaying ? snapshot.lyricWindow(at: context.date) : nil
             let displayText = menuBarText(snapshot: snapshot, lyricWindow: lyricWindow, date: context.date)
             let preferences = appearanceSettings.preferences
             let textWidth = max(150, preferences.menuBarWidth - 136)
@@ -190,7 +191,7 @@ struct MenuBarTransportBarView: View {
                 .help("打开当前播放器")
 
                 Button(action: playerMonitor.openCurrentPlayerApp) {
-                    if snapshot.state.isPlaying {
+                    if isPlaying {
                         ScrollingStatusText(
                             text: displayText,
                             width: textWidth,
@@ -276,9 +277,13 @@ struct MenuBarTransportBarView: View {
         StatusTransportButton(systemName: systemName, emphasized: emphasized, action: action)
     }
 
-    private func menuBarText(snapshot: PlaybackSnapshot, lyricWindow: LyricWindow, date: Date) -> String {
+    private func menuBarText(snapshot: PlaybackSnapshot, lyricWindow: LyricWindow?, date: Date) -> String {
         guard let track = snapshot.track else {
             return "等待播放"
+        }
+
+        if !snapshot.state.isPlaying {
+            return track.displayText
         }
 
         let isTrackTransition = date.timeIntervalSince(lastTrackChangeDate) < Self.trackTransitionDisplayDuration
@@ -290,12 +295,8 @@ struct MenuBarTransportBarView: View {
             return track.displayText
         }
 
-        // 音乐暂停时显示歌名+歌手
-        if !snapshot.state.isPlaying {
-            return track.displayText
-        }
-
         if appearanceSettings.preferences.menuBarPreferLyrics,
+           let lyricWindow,
            lyricWindow.current != "等待播放器开始播放",
            lyricWindow.current != track.title {
             return lyricWindow.current
@@ -304,12 +305,12 @@ struct MenuBarTransportBarView: View {
         return track.displayText
     }
 
-    private func trackTooltip(snapshot: PlaybackSnapshot, lyricWindow: LyricWindow) -> String {
+    private func trackTooltip(snapshot: PlaybackSnapshot, lyricWindow: LyricWindow?) -> String {
         guard let track = snapshot.track else {
             return "等待播放"
         }
 
-        return "\(track.title)\n\(track.subtitle)\n\(lyricWindow.current)"
+        return "\(track.title)\n\(track.subtitle)\n\(lyricWindow?.current ?? track.displayText)"
     }
 
     private func currentPlayerAppIcon() -> NSImage? {
