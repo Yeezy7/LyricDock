@@ -7,10 +7,22 @@ final class MenuBarArtworkModel: ObservableObject {
 
     private let lookupService = ArtworkLookupService()
     private var loadTask: Task<Void, Never>?
-    private var cache: [String: NSImage] = [:]
+    private let cache = NSCache<NSString, CacheWrapper>()
     private var currentIdentity: String?
     private var lastUpdateTime: Date = .distantPast
-    private let minimumUpdateInterval: TimeInterval = 2.0 // 最小更新间隔，避免频繁请求
+    private let minimumUpdateInterval: TimeInterval = 2.0
+
+    private final class CacheWrapper: NSObject {
+        let image: NSImage
+        init(image: NSImage) {
+            self.image = image
+        }
+    }
+
+    init() {
+        cache.countLimit = 20
+        cache.totalCostLimit = 40 * 1024 * 1024
+    }
 
     deinit {
         loadTask?.cancel()
@@ -39,8 +51,8 @@ final class MenuBarArtworkModel: ObservableObject {
             return
         }
 
-        if let cached = cache[identity] {
-            image = cached
+        if let cached = cache.object(forKey: identity as NSString) {
+            image = cached.image
             return
         }
 
@@ -75,7 +87,7 @@ final class MenuBarArtworkModel: ObservableObject {
                     return
                 }
 
-                self.cache[identity] = artwork
+                self.cache.setObject(CacheWrapper(image: artwork), forKey: identity as NSString)
                 self.image = artwork
             }
         }

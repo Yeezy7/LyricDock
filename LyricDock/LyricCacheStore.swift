@@ -12,6 +12,8 @@ actor LyricCacheStore {
     private let decoder = JSONDecoder()
     private let cacheURL: URL
     private var cache: [String: CachedLyricsEntry]
+    private var lastPurgeDate: Date = .distantPast
+    private let purgeInterval: TimeInterval = 60 * 60
 
     init() {
         cacheURL = LyricCacheStore.makeCacheURL(fileManager: fileManager)
@@ -21,6 +23,10 @@ actor LyricCacheStore {
     func cachedPayload(for key: String) -> LyricsPayload? {
         purgeExpiredEntriesIfNeeded()
         guard let entry = cache[key] else {
+            return nil
+        }
+        if Date().timeIntervalSince(entry.cachedAt) >= cacheLifetime {
+            cache.removeValue(forKey: key)
             return nil
         }
         return entry.payload
@@ -33,6 +39,10 @@ actor LyricCacheStore {
 
     private func purgeExpiredEntriesIfNeeded() {
         let now = Date()
+        guard now.timeIntervalSince(lastPurgeDate) >= purgeInterval else {
+            return
+        }
+        lastPurgeDate = now
         let originalCount = cache.count
         cache = cache.filter { now.timeIntervalSince($0.value.cachedAt) < cacheLifetime }
         if cache.count != originalCount {

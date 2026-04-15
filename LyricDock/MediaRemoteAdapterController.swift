@@ -131,6 +131,15 @@ actor MediaRemoteAdapterController {
         lastErrorDescription
     }
 
+    func stop() {
+        streamTask?.cancel()
+        streamTask = nil
+        process?.terminate()
+        process = nil
+        currentPlayback = nil
+        lastErrorDescription = nil
+    }
+
     nonisolated func makeObservation(
         on queue: DispatchQueue = .main,
         handler: @escaping @Sendable () -> Void
