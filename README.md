@@ -75,6 +75,11 @@ Then open the app normally.
 - [ ] Support more music players
 - [ ] Add dropdown lyrics list feature
 - [ ] Optimize lyrics matching algorithm
+- [ ] Customize lyric styles
+- [ ] Add playback animation effects
+- [ ] Control background transparency, menu bar width, and icon priority
+- [ ] Optional multiple themes
+- [ ] Add Windows version
 
 ## 🔑 License
 
