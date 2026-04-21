@@ -230,11 +230,10 @@ final class PlayerMonitor: ObservableObject {
             statusMessage = statusText(for: newSnapshot, reason: reason)
             sharedStore.save(newSnapshot)
             
-            // 更新状态跟踪
             lastPlaybackState = playback.state
             lastTrackIdentity = trackIdentity
-        } else {
-            // 只更新位置和时间，不触发 UI 刷新
+        } else if abs(playback.position - snapshot.position) > 1.0
+                    || abs(playback.updatedAt.timeIntervalSince(snapshot.updatedAt)) > 2.0 {
             snapshot = PlaybackSnapshot(
                 track: snapshot.track,
                 state: snapshot.state,
